@@ -1,41 +1,17 @@
-﻿using System.Collections.Generic;
-using System;
+﻿using System;
+using System.Collections.Generic;
+
 namespace PigLatin
 {
     public class Program
     {
         public static void Main(string[] args)
         {
-           /* PhoneticInstruments phoneticInstruments = new PhoneticInstruments();
-            string res = phoneticInstruments.GetSyllable("стекло");
-            Console.WriteLine(res);
-
-            res = phoneticInstruments.GetSyllable("чёрная");
-            Console.WriteLine(res);
-
-
-            res = phoneticInstruments.GetSyllable("друзья");
-            Console.WriteLine(res);
-
-
-            res = phoneticInstruments.GetSyllable("вода");
-            Console.WriteLine(res);
-
-
-            res = phoneticInstruments.GetSyllable("масло");
-            Console.WriteLine(res);
-
-
-            res = phoneticInstruments.GetSyllable("лодка");
-            Console.WriteLine(res);
-
-            res = phoneticInstruments.GetSyllable("лето");
-            Console.WriteLine(res);*/
         }
     }
 
     public interface IPigLatin
-    {        
+    {
         string Encrypt(string text);
 
         string Decrypt(string text);
@@ -43,14 +19,11 @@ namespace PigLatin
 
     public class RuPigLatin : IPigLatin
     {
-        
-        string syllable;
+        private string[] syllables;
 
-        PhoneticInstruments phoneticInstruments;
+        private PhoneticInstruments phoneticInstruments;
         public bool IsVowel { get; set; }
-        private string textMessage;
-        private string resultMessage;
-        readonly char CONSONANT;
+        private readonly char CONSONANT;
 
         public RuPigLatin(char DefaultConsonant = 'с')
         {
@@ -60,22 +33,21 @@ namespace PigLatin
 
         public string Encrypt(string text)
         {
-            textMessage = text;
-            while(textMessage.Length > 0)
+            text = text.ToLower();
+            string result = "";
+            syllables = phoneticInstruments.GetSyllable(text);
+            for (int i = 0; i < syllables.Length; i++)
             {
-                //syllable = phoneticInstruments.GetSyllable(textMessage, ref textMessage);
-                resultMessage += syllable + CONSONANT + syllable[^1];
+                char vowel = phoneticInstruments.GetVowel(syllables[i]);
+                result = result + syllables[i] + CONSONANT + vowel;
             }
-
-            return resultMessage;
+            return result;
         }
 
         public string Decrypt(string text)
         {
             return "";
         }
-
-        
     }
 
     public class EngPigLatin : IPigLatin
@@ -90,48 +62,148 @@ namespace PigLatin
             return "";
         }
     }
-    
 
     public class PhoneticInstruments
     {
-        readonly List<char> vowelsList = new List<char>() 
+        private readonly List<char> vowelsList = new List<char>()
         {
-            'а', 'о', 'э', 'е','и', 'ы', 'у', 'ё', 'ю', 'я' 
+            'а', 'о', 'э', 'е','и', 'ы', 'у', 'ё', 'ю', 'я'
         };
-        readonly List<char> zvonkSonarSoglList = new List<char> //delete 'й'
+
+        private readonly List<char> zvonkSonarSoglList = new List<char> //delete 'й'
         {
             'л','м','н','р'
         };
-        readonly List<char> zvonkShumnieSoglList = new List<char>
+
+        private readonly List<char> zvonkShumnieSoglList = new List<char>
         {
             'в','з','ж','б','д','г'
         };
-        readonly List<char> ShumnieSoglList = new List<char>
+
+        private readonly List<char> ShumnieSoglList = new List<char>
         {
             'п','т','к','ф','с','ш','х','щ','ч','ц'
         };
-        string flags = "";
 
+        private string flags = "";
+
+        // Получаем массив слогов
         public string[] GetSyllable(string word)
         {
-            flags = GetFlags(word);
-            string convertedFlags = RunFlags(flags).Trim() ;
-            string[] flagArray = convertedFlags.Split(" ");
+            flags = GetFlags(word); // получаем флаги слов "145432"
+            string convertedFlags = RunFlags(flags).Trim(); // ставим пробелы между флагами
+            string[] flagArray = convertedFlags.Split(" "); // делаем массив флагов
             string[] result = new string[flagArray.Length];
 
-            for(int i = 0;  i < flagArray.Length; i++)
+            // в массив results[] конвертируем флаги в буквы
+            for (int i = 0; i < flagArray.Length; i++)
             {
                 string microword = flagArray[i];
-                result[i] += word.Substring(0,microword.Length);
+                result[i] += word.Substring(0, microword.Length);
                 word = word.Remove(0, microword.Length);
             }
+
+            result = ResearchResults(result); // проверяем по остаточным правилам
+            result = DeleteEmptyStrings(result); // удаляем пустые строки в массиве
+            result = CheckResults(result); // проверка на остаточные правила 2
             return result;
+        }
+
+        public string[] CheckResults(string[] arr)
+        {
+            string[] result = arr;
+            for (int i = 1; i < result.Length; i++)
+            {
+                string firstWord = result[i - 1];
+                string secondWord = result[i];
+
+                // проверка на "ять"
+                if (firstWord.Contains("ять") && (!(i == result.Length)))
+                {
+                    result[i - 1] = result[i - 1].Remove(firstWord.Length - 2, 2);
+                    result[i] = "ть" + result[i];
+                    continue;
+                }
+
+                // проверка : если первый слог кончается на гласную, а след. слог начинается
+                // на 2 согласные, то к первому слогу добавляем первую букву второго слога
+                if ((secondWord.Length > 1) && (result.Length >= 3) && (i != 1) &&
+                    (secondWord.Length > firstWord.Length) &&
+                    (secondWord.Length > 2) &&
+                    ((HaveVowel(Convert.ToString(firstWord[^1]))) &&
+                    (!HaveVowel(Convert.ToString(secondWord[0]))) &&
+                    (!HaveVowel(Convert.ToString(secondWord[1])))))
+                {
+                    result[i - 1] += secondWord[0];
+                    result[i] = result[i].Remove(0, 1);
+                }
+            }
+
+            // проверка на удвоенные согласные
+            for (int i = 1; i < result.Length; i++)
+            {
+                string firstWord = result[i - 1];
+                string secondWord = result[i];
+                if (firstWord[^1] == secondWord[0])
+                {
+                    result[i - 1] = result[i - 1].Remove(firstWord.Length - 1, 1);
+                    result[i] = firstWord[^1] + result[i];
+                    continue;
+                }
+            }
+            return result;
+        }
+
+        public string[] DeleteEmptyStrings(string[] arr)
+        {
+            List<string> newArr = new List<string>();
+            foreach (string x in arr)
+            {
+                if (!(x == ""))
+                    newArr.Add(x);
+            }
+            string[] result = new string[newArr.Count];
+
+            for (int i = 0; i < newArr.Count; i++)
+            {
+                result[i] = newArr[i];
+            }
+
+            return result;
+        }
+
+        public string[] ResearchResults(string[] arr)
+        {
+            string[] result = arr;
+            for (int i = 1; i < arr.Length; i++)
+            {
+                string firstWord = result[i - 1];
+                string secondWord = result[i];
+
+                if (HaveVowel(firstWord) && (!HaveVowel(secondWord)))
+                {
+                    result[i - 1] += result[i];
+                    result[i] = "";
+                }
+            }
+
+            return result;
+        }
+
+        public bool HaveVowel(string word)
+        {
+            foreach (var c in word)
+            {
+                if (vowelsList.Contains(c))
+                    return true;
+            }
+            return false;
         }
 
         public string GetFlags(string word)
         {
             string res = "";
-            foreach(char letter in word)
+            foreach (char letter in word)
             {
                 if (vowelsList.Contains(letter))
                     res += 4;
@@ -149,23 +221,17 @@ namespace PigLatin
 
         public string RunFlags(string flags)
         {
+            if (flags.Length == 1)
+                return flags;
             string result = "";
             int i = 1;
-            while(i < flags.Length)
+            while (i < flags.Length)
             {
-                int first = flags[i-1] - '0';
+                int first = flags[i - 1] - '0';
                 int second = flags[i] - '0';
-                
 
                 if (i == flags.Length - 1)
                 {
-                    /*if ((first - second > 1) && (first == 4 || first == 3))
-                        result += flags[i-1]+" " + flags[i];
-                    else
-                        result += flags[i-1] +""+ flags[i];
-                    i++;
-                    continue;
-*/
                     if ((first - second > 1) && (first == 4 || first == 3) ||
                     (first == 4) && (first == second))
                     {
@@ -179,51 +245,56 @@ namespace PigLatin
                     {
                         if ((flags[i] == 'ъ' || flags[i] == 'ь' || flags[i] == 'й') || (first - second <= 1))
                         {
-                            result += flags[i - 1]+""+flags[i];
+                            result += flags[i - 1] + "" + flags[i];
                         }
                         else
                         {
                             result += flags[i - 1] + " " + flags[i];
                         }
-                        
                     }
                     i++;
                     continue;
                 }
 
                 if ((first - second > 1) && (first == 4 || first == 3) ||
-                    (first==4)&&(first == second))
+                    (first == 4) && (first == second))
                 {
-                    result += flags[i-1] + " ";
+                    result += flags[i - 1] + " ";
                 }
-                else if(first==4 && (flags[i] == 'й'))
+                else if (first == 4 && (flags[i] == 'й'))
                 {
                     result += flags[i - 1] + "" + flags[i] + " ";
-                    i +=2;
+                    i += 2;
                     continue;
-                }                    
-                else if(first == 4 && second == 3)
+                }
+                else if (first == 4 && second == 3)
                 {
                     result += flags[i - 1] + " ";
                 }
                 else
                 {
-                    if (  (flags[i] == 'ъ' || flags[i] == 'ь' ||flags[i]=='й')  || (first - second <= 1))
+                    if ((flags[i] == 'ъ' || flags[i] == 'ь' || flags[i] == 'й') || (first - second <= 1))
                     {
-                        result += flags[i-1];
+                        result += flags[i - 1];
                     }
                     else
                     {
-                        result += flags[i -1] + " ";
+                        result += flags[i - 1] + " ";
                     }
                 }
                 i++;
-
-
-              
-                
             }
             return result;
+        }
+
+        public char GetVowel(string syllable)
+        {
+            foreach (char vowel in syllable)
+            {
+                if (vowelsList.Contains(vowel))
+                    return vowel;
+            }
+            return 'q';
         }
     }
 }

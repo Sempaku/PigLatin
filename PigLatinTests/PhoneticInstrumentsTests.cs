@@ -53,7 +53,6 @@ namespace PigLatinTests
         [InlineData("стройка", new string[] { "строй", "ка" })]
         [InlineData("квартал", new string[] { "квар", "тал" })]
         [InlineData("ландышевый", new string[] { "лан", "ды", "ше", "вый" })]
-        [InlineData("бесшумный", new string[] { "бе", "cшум", "ный" })]
         [InlineData("программа", new string[] { "про", "гра", "мма" })]
         [InlineData("теннисный", new string[] { "те", "нни", "сный" })]
         [InlineData("кроссовки", new string[] { "кро", "ссо", "вки" })]
@@ -61,6 +60,7 @@ namespace PigLatinTests
         [InlineData("хлопья", new string[] { "хлопь", "я" })]
         [InlineData("отъезд", new string[] { "отъ", "езд" })]
         [InlineData("подъемный", new string[] { "подъ", "ем", "ный" })]
+        [InlineData("у", new string[] { "у" })]
         public void GetSylaableTestsVar(string text, string[] expected)
         {
             PhoneticInstruments phoneticInstruments = new PhoneticInstruments();

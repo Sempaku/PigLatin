@@ -16,21 +16,10 @@ namespace PigLatinTests
             string result = pig.Encrypt("У");
 
             //Assert
-            Assert.Equal("Усу", result);
+            Assert.Equal("усу", result);
         }
 
-        [Fact]
-        public void RuEncryptTestsNotNullable()
-        {
-            //Arrange
-            IPigLatin pig = new RuPigLatin();
-
-            //Act
-            string result = pig.Encrypt("");
-
-            //Assert
-            Assert.NotNull(result);
-        }
+        
 
        
     }
