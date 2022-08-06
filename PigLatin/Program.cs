@@ -7,31 +7,40 @@ namespace PigLatin
     {
         public static void Main(string[] args)
         {
+            IPigLatin pig = new RuPigLatin();
+            string result = pig.Encrypt("У, вас!");
+            Console.WriteLine(result);
         }
     }
 
     public interface IPigLatin
     {
+        string EncryptWord(string word);
         string Encrypt(string text);
-
+        string DecryptWord(string word);
         string Decrypt(string text);
     }
 
     public class RuPigLatin : IPigLatin
     {
         private string[] syllables;
+        private List<char> unalphList = new List<char> 
+        {
+            ' ','!','@','#',',','.','%','\\','?','(',')','{','}',
+            ':',';','<','>','/','*','-','+','=','$','^','&','"','№'
+        };
 
         private PhoneticInstruments phoneticInstruments;
-        public bool IsVowel { get; set; }
+        // public bool IsVowel { get; set; }
         private readonly char CONSONANT;
-
+        private string[] textMsg;
         public RuPigLatin(char DefaultConsonant = 'с')
         {
             CONSONANT = DefaultConsonant;
             phoneticInstruments = new PhoneticInstruments();
         }
 
-        public string Encrypt(string text)
+        public string EncryptWord(string text)
         {
             text = text.ToLower();
             string result = "";
@@ -44,25 +53,83 @@ namespace PigLatin
             return result;
         }
 
-        public string Decrypt(string text)
-        {
-            return "";
-        }
-    }
-
-    public class EngPigLatin : IPigLatin
-    {
         public string Encrypt(string text)
         {
+            textMsg = GetWords(text);
+            textMsg = phoneticInstruments.DeleteEmptyStrings(textMsg);
+
+           
+            string result = "";
+            for (int i = 0; i < textMsg.Length; i++)
+            {
+                if ((textMsg[i].Length == 1 ) &&
+                    unalphList.Contains(Convert.ToChar(textMsg[i])))
+                {
+                    
+                    result += textMsg[i];
+
+                }
+                else
+                {
+                    result += EncryptWord(textMsg[i]);
+                }
+
+            }
+            return result;
+        }
+        public string DecryptWord(string text)
+        {
             return "";
         }
-
         public string Decrypt(string text)
         {
             return "";
         }
+
+        public string[] GetWords(string text)
+        {
+            string[] result;
+            text = text.ToLower();
+            string alh = "abcdefghijklmnopqrstuvwxyzабвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+            List<string> arr = new List<string>() { "" } ;
+            int indexWord = 0;
+            int indexMassiv = 0;
+            while (indexWord < text.Length)
+            {
+                if (alh.Contains(text[indexWord]))
+                {
+                    arr[indexMassiv] += text[indexWord];
+                    indexWord++;
+                }
+                else
+                {
+                    arr.Add(Convert.ToString(text[indexWord]));
+                    arr.Add("");
+                    indexWord++;
+                    indexMassiv += 2;
+                    
+                }
+            }
+            result = new string[arr.Count];
+            for (int j = 0; j < arr.Count; j++)
+                result[j] += arr[j];
+            return result;
+        }
     }
 
+/*    public class EngPigLatin : IPigLatin
+    {
+        public string EncryptWord(string text)
+        {
+            return "";
+        }
+
+        public string DecryptWord(string text)
+        {
+            return "";
+        }
+    }
+*/
     public class PhoneticInstruments
     {
         private readonly List<char> vowelsList = new List<char>()
